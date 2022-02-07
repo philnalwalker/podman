@@ -146,6 +146,39 @@ ExecStartPost=/bin/touch /var/lib/%N.stamp
 [Install]
 WantedBy=default.target
  `
+	load9pfs := `[Unit]
+Description=Load 9pfs kernel modules
+
+[Service]
+Type=simple
+ExecStart=/bin/sh -c 'mkdir -p /var/mnt/host; modprobe 9p; modprobe 9pnet; modprobe 9pnet_virtio'
+
+[Install]
+RequiredBy=default.target
+`
+	varMntHost := `[Unit]
+Description=Virtual machine host mount
+
+[Mount]
+What=fs0
+Where=/var/mnt/host
+Type=9p
+Options=trans=virtio,version=9p2000.L
+
+[Install]
+WantedBy=multi-user.target
+`
+
+	varMntHostAutomount := `[Unit]
+Description=Podman VM host automount
+
+[Automount]
+Where=/var/mnt/host
+DirectoryMode=0755
+
+[Install]
+WantedBy=multi-user.target
+`
 	_ = ready
 	ignSystemd := Systemd{
 		Units: []Unit{
@@ -172,6 +205,21 @@ WantedBy=default.target
 				Enabled:  boolToPtr(true),
 				Name:     "remove-moby.service",
 				Contents: &deMoby,
+			},
+			{
+				Enabled:  boolToPtr(true),
+				Name:     "9pfs.service",
+				Contents: &load9pfs,
+			},
+			{
+				Enabled:  boolToPtr(false),
+				Name:     "var-mnt-host.mount",
+				Contents: &varMntHost,
+			},
+			{
+				Enabled:  boolToPtr(true),
+				Name:     "var-mnt-host.automount",
+				Contents: &varMntHostAutomount,
 			},
 		}}
 	ignConfig := Config{
