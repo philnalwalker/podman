@@ -3,6 +3,7 @@ package containers
 import (
 	"fmt"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/containers/common/pkg/completion"
@@ -162,6 +163,14 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	passthrough := cliVals.LogDriver == define.PassthroughLogging
+
+	if cmd.Flag("volume").Changed {
+		for i, volume := range cliVals.Volume {
+			if strings.HasPrefix(volume, "/") {
+				cliVals.Volume[i] = path.Join("/var/mnt/host", volume)
+			}
+		}
+	}
 
 	// If attach is set, clear stdin/stdout/stderr and only attach requested
 	if cmd.Flag("attach").Changed {
