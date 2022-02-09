@@ -146,16 +146,6 @@ ExecStartPost=/bin/touch /var/lib/%N.stamp
 [Install]
 WantedBy=default.target
  `
-	load9pfs := `[Unit]
-Description=Load 9pfs kernel modules
-
-[Service]
-Type=simple
-ExecStart=/bin/sh -c 'mkdir -p /var/mnt/host; modprobe 9p; modprobe 9pnet; modprobe 9pnet_virtio'
-
-[Install]
-RequiredBy=default.target
-`
 	varMntHost := `[Unit]
 Description=Virtual machine host mount
 
@@ -207,11 +197,6 @@ WantedBy=multi-user.target
 				Contents: &deMoby,
 			},
 			{
-				Enabled:  boolToPtr(true),
-				Name:     "9pfs.service",
-				Contents: &load9pfs,
-			},
-			{
 				Enabled:  boolToPtr(false),
 				Name:     "var-mnt-host.mount",
 				Contents: &varMntHost,
@@ -244,6 +229,7 @@ func getDirs(usrName string) []Directory {
 		"/home/" + usrName + "/.config/systemd",
 		"/home/" + usrName + "/.config/systemd/user",
 		"/home/" + usrName + "/.config/systemd/user/default.target.wants",
+		"/var/mnt/host",
 	}
 	var (
 		dirs = make([]Directory, len(newDirs))
@@ -299,6 +285,10 @@ machine_enabled=true
 	delegateConf := `[Service]
 Delegate=memory pids cpu io
 `
+
+	kernelModules9p := `9p
+9pnet
+9pnet_virtio`
 
 	// Add a fake systemd service to get the user socket rolling
 	files = append(files, File{
@@ -484,6 +474,22 @@ Delegate=memory pids cpu io
 			}
 		}
 	}
+
+	// Add 9p kernel modules to /etc/modules-load.d
+	files = append(files, File{
+		Node: Node{
+			Group: getNodeGrp("root"),
+			Path:  "/etc/modules-load.d/9p.conf",
+			User:  getNodeUsr("root"),
+		},
+		FileEmbedded1: FileEmbedded1{
+			Append: nil,
+			Contents: Resource{
+				Source: encodeDataURLPtr(kernelModules9p),
+			},
+			Mode: intToPtr(0644),
+		},
+	})
 
 	return files
 }
