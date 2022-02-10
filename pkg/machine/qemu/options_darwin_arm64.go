@@ -18,7 +18,12 @@ func (v *MachineVM) addArchOptions() []string {
 		"-cpu", "cortex-a57",
 		"-M", "virt,highmem=off",
 		"-drive", "file=" + getEdk2CodeFd("edk2-aarch64-code.fd") + ",if=pflash,format=raw,readonly=on",
-		"-drive", "file=" + ovmfDir + ",if=pflash,format=raw"}
+		"-drive", "file=" + ovmfDir + ",if=pflash,format=raw",
+		"-fsdev",
+		"local,security_model=mapped,id=fsdev-fs0,multidevs=remap,path=/",
+		"-device",
+		"virtio-9p,id=fs0,fsdev=fsdev-fs0,mount_tag=fs0",
+	}
 	return opts
 }
 
